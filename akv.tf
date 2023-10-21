@@ -5,6 +5,7 @@ resource "azurerm_key_vault" "certificates" {
   sku_name                      = "premium"
   tenant_id                     = data.azurerm_client_config.current.tenant_id
   public_network_access_enabled = true # Enabled due to laptop access needed to lab
+  purge_protection_enabled      = false
   soft_delete_retention_days    = 7
   enable_rbac_authorization     = false
   tags                          = local.tags
@@ -12,7 +13,8 @@ resource "azurerm_key_vault" "certificates" {
   network_acls {
     bypass         = "AzureServices"
     default_action = "Deny"
-    virtual_network_subnet_ids = [azurerm_subnet.agw.id,
+    virtual_network_subnet_ids = [
+      azurerm_subnet.agw.id,
     ]
     ip_rules = ["98.96.101.244", "104.225.182.52"]
   }
