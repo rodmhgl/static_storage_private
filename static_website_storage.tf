@@ -3,16 +3,17 @@ resource "random_id" "storage_account" {
 }
 
 resource "azurerm_storage_account" "this" {
-  name                          = local.stg_account_name
-  resource_group_name           = azurerm_resource_group.this.name
-  location                      = azurerm_resource_group.this.location
-  account_kind                  = "StorageV2" # StorageV2 or BlockBlobStorage
-  account_tier                  = "Standard"
-  account_replication_type      = "LRS"
-  enable_https_traffic_only     = true
-  min_tls_version               = "TLS1_2"
-  public_network_access_enabled = false
-  tags                          = local.tags
+  name                            = local.stg_account_name
+  resource_group_name             = azurerm_resource_group.this.name
+  location                        = azurerm_resource_group.this.location
+  account_kind                    = "BlockBlobStorage" # StorageV2 or BlockBlobStorage
+  account_tier                    = "Premium"
+  account_replication_type        = "LRS"
+  min_tls_version                 = "TLS1_2"
+  enable_https_traffic_only       = true
+  public_network_access_enabled   = false
+  allow_nested_items_to_be_public = false
+  tags                            = local.tags
 
   network_rules {
     default_action             = "Deny"
@@ -32,7 +33,7 @@ resource "azurerm_storage_account" "this" {
 
 }
 
-resource "azurerm_private_endpoint" "stg" {
+resource "azurerm_private_endpoint" "stg_web" {
   name                = local.stg_pe_name
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name

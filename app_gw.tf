@@ -44,18 +44,18 @@ resource "azurerm_application_gateway" "this" {
   backend_address_pool {
     name = local.backend_address_pool_name
     # fqdns = [azurerm_storage_account.this.primary_web_host]
-    fqdns = ["pvtstg6b.privatelink.web.core.windows.net"]
+    fqdns = ["${azurerm_storage_account.this.name}.privatelink.web.core.windows.net"]
   }
 
   backend_http_settings {
     name                                = local.http_setting_name
-    host_name                           = "pvtstg6b.web.core.windows.net"
+    host_name                           = "${azurerm_storage_account.this.name}.web.core.windows.net"
     cookie_based_affinity               = "Disabled"
     path                                = "/"
     port                                = 443
     protocol                            = "Https"
     request_timeout                     = 60
-    probe_name                          = "probe"
+    probe_name                          = "https_health_probe"
     pick_host_name_from_backend_address = false
   }
 
@@ -73,12 +73,12 @@ resource "azurerm_application_gateway" "this" {
     name                           = local.https_listener_name
     protocol                       = "Https"
     require_sni                    = false
-    ssl_certificate_name           = local.agw_ssl_name
+    ssl_certificate_name           = "${local.agw_ssl_name}-cert"
   }
 
   probe {
     interval                                  = 30
-    name                                      = "probe"
+    name                                      = "https_health_probe"
     protocol                                  = "Https" # Https
     path                                      = "/index.htm"
     timeout                                   = 60
@@ -101,9 +101,8 @@ resource "azurerm_application_gateway" "this" {
   }
 
   ssl_certificate {
-    name                = local.agw_ssl_name
-    key_vault_secret_id = azurerm_key_vault_secret.this_https.id
-    # password            = var.certificate_password
+    name                = "${local.agw_ssl_name}-cert"
+    key_vault_secret_id = azurerm_key_vault_certificate.this_https.secret_id
   }
 
   identity {
@@ -111,7 +110,11 @@ resource "azurerm_application_gateway" "this" {
     identity_ids = [azurerm_user_assigned_identity.agw_cert_read.id]
   }
 
-  depends_on = [azurerm_key_vault_access_policy.agw_identity]
+  depends_on = [
+    azurerm_key_vault_access_policy.agw_identity,
+    azurerm_key_vault_certificate.this_https,
+    azurerm_private_endpoint.akv
+  ]
 }
 
 resource "azurerm_user_assigned_identity" "agw_cert_read" {
@@ -123,10 +126,9 @@ resource "azurerm_user_assigned_identity" "agw_cert_read" {
 
 resource "azurerm_key_vault_access_policy" "agw_identity" {
   key_vault_id       = azurerm_key_vault.certificates.id
-  object_id          = azurerm_user_assigned_identity.agw_cert_read.client_id
+  object_id          = azurerm_user_assigned_identity.agw_cert_read.principal_id
   tenant_id          = data.azurerm_client_config.current.tenant_id
   secret_permissions = ["Get"]
-  # certificate_permissions = [ "ManageContacts" ]
 }
 
 # convert pem to unencrypted pfx without keys
@@ -141,3 +143,23 @@ resource "azurerm_key_vault_secret" "this_https" {
     azurerm_private_endpoint.akv
   ]
 }
+
+resource "azurerm_key_vault_certificate" "this_https" {
+  name         = "${local.agw_ssl_name}-cert"
+  key_vault_id = azurerm_key_vault.certificates.id
+  certificate {
+    contents = filebase64(var.certificate_path)
+    password = var.certificate_password
+  }
+  depends_on = [
+    azurerm_key_vault_access_policy.self,
+    azurerm_private_endpoint.akv
+  ]
+}
+
+# Stack:
+# Network / Subnets / DNS
+# Key Vault / AKV Access Policy (Self)
+# Storage
+# Certificate Placement
+# Public IP / User Assigned Identity / AKV Access Policy (UAI) / App Gateway
