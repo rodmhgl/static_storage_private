@@ -1,3 +1,12 @@
+resource "azurerm_public_ip" "this" {
+  name                = "${local.prefix}-pip"
+  resource_group_name = azurerm_resource_group.this.name
+  location            = azurerm_resource_group.this.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = local.tags
+}
+
 resource "azurerm_virtual_network" "this" {
   name                = local.vnet_name
   address_space       = ["10.0.0.0/16"]
@@ -10,7 +19,7 @@ resource "azurerm_subnet" "stg" {
   name                 = local.stg_subnet_name
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
-  service_endpoints    = ["Microsoft.Storage"]
+  service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
   address_prefixes     = ["10.0.0.0/24"]
 }
 
@@ -18,7 +27,7 @@ resource "azurerm_subnet" "agw" {
   name                 = local.agw_subnet_name
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
-  service_endpoints    = ["Microsoft.Storage"]
+  service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
   address_prefixes     = ["10.0.1.0/24"]
 }
 
@@ -26,7 +35,7 @@ resource "azurerm_subnet" "pe" {
   name                 = local.pe_subnet_name
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
-  service_endpoints    = ["Microsoft.Storage"]
+  service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
   address_prefixes     = ["10.0.2.0/24"]
 }
 
@@ -52,6 +61,27 @@ resource "azurerm_private_endpoint" "stg" {
   private_dns_zone_group {
     name                 = "privatelink-web-dns-zone-group"
     private_dns_zone_ids = [azurerm_private_dns_zone.privatelink_web.id]
+  }
+
+}
+
+resource "azurerm_private_endpoint" "akv" {
+  name                = local.akv_pe_name
+  location            = azurerm_resource_group.this.location
+  resource_group_name = azurerm_resource_group.this.name
+  subnet_id           = azurerm_subnet.pe.id
+  tags                = local.tags
+
+  private_service_connection {
+    name                           = local.akv_psc_name
+    private_connection_resource_id = azurerm_key_vault.certificates.id
+    subresource_names              = ["Vault"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "privatelink-vault-dns-zone-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.privatelink_vaultcore.id]
   }
 
 }

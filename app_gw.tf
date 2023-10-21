@@ -1,24 +1,17 @@
 locals {
   backend_address_pool_name      = "${azurerm_virtual_network.this.name}-beap"
-  frontend_port_name             = "${azurerm_virtual_network.this.name}-feport"
+  frontend_http_port_name        = "${azurerm_virtual_network.this.name}-http-feport"
+  frontend_https_port_name       = "${azurerm_virtual_network.this.name}-https-feport"
   frontend_ip_configuration_name = "${azurerm_virtual_network.this.name}-feip"
   http_setting_name              = "${azurerm_virtual_network.this.name}-be-htst"
-  listener_name                  = "${azurerm_virtual_network.this.name}-httplstn"
+  http_listener_name             = "${azurerm_virtual_network.this.name}-httplstn"
+  https_listener_name            = "${azurerm_virtual_network.this.name}-httpslstn"
   request_routing_rule_name      = "${azurerm_virtual_network.this.name}-rqrt"
-  redirect_configuration_name    = "${azurerm_virtual_network.this.name}-rdrcfg"
-}
-
-resource "azurerm_public_ip" "this" {
-  name                = "${local.prefix}-pip"
-  resource_group_name = azurerm_resource_group.this.name
-  location            = azurerm_resource_group.this.location
-  allocation_method   = "Static"
-  sku                 = "Standard"
-  tags                = local.tags
+  # redirect_configuration_name    = "${azurerm_virtual_network.this.name}-rdrcfg"
 }
 
 resource "azurerm_application_gateway" "this" {
-  name                = "${local.prefix}-agw"
+  name                = local.agw_name
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
   tags                = local.tags
@@ -35,8 +28,13 @@ resource "azurerm_application_gateway" "this" {
   }
 
   frontend_port {
-    name = local.frontend_port_name
+    name = local.frontend_http_port_name
     port = 80
+  }
+
+  frontend_port {
+    name = local.frontend_https_port_name
+    port = 443
   }
 
   frontend_ip_configuration {
@@ -45,41 +43,52 @@ resource "azurerm_application_gateway" "this" {
   }
 
   backend_address_pool {
-    name  = local.backend_address_pool_name
+    name = local.backend_address_pool_name
     # fqdns = [azurerm_storage_account.this.primary_web_host]
-    fqdns =  [ "pvtstg6b.privatelink.web.core.windows.net" ]
+    fqdns = ["pvtstg6b.privatelink.web.core.windows.net"]
   }
 
   backend_http_settings {
-    name                  = local.http_setting_name
-    cookie_based_affinity = "Disabled"
-    path                  = "/"
-    port                  = 80
-    protocol              = "Http"
-    request_timeout       = 60
-    probe_name = "probe"
-    pick_host_name_from_backend_address = true
+    name                                = local.http_setting_name
+    host_name                           = "pvtstg6b.web.core.windows.net"
+    cookie_based_affinity               = "Disabled"
+    path                                = "/"
+    port                                = 443
+    protocol                            = "Https"
+    request_timeout                     = 60
+    probe_name                          = "probe"
+    pick_host_name_from_backend_address = false
   }
 
   http_listener {
-    name                           = local.listener_name
+    name                           = local.http_listener_name
     frontend_ip_configuration_name = local.frontend_ip_configuration_name
-    frontend_port_name             = local.frontend_port_name
+    frontend_port_name             = local.frontend_http_port_name
     protocol                       = "Http"
   }
 
+  http_listener {
+    frontend_ip_configuration_name = local.frontend_ip_configuration_name
+    frontend_port_name             = local.frontend_https_port_name
+    host_names                     = []
+    name                           = local.https_listener_name
+    protocol                       = "Https"
+    require_sni                    = false
+    ssl_certificate_name           = local.agw_ssl_name
+  }
+
   probe {
-    interval = 30
-    name = "probe"
-    protocol = "Http" # Https
-    path = "/index.htm"
-    timeout = 60
-    unhealthy_threshold = 2
-    port = 80
+    interval                                  = 30
+    name                                      = "probe"
+    protocol                                  = "Https" # Https
+    path                                      = "/index.htm"
+    timeout                                   = 60
+    unhealthy_threshold                       = 2
+    port                                      = 443
     pick_host_name_from_backend_http_settings = true
 
     match {
-      status_code = [ "200" ]
+      status_code = ["200"]
     }
   }
 
@@ -87,9 +96,79 @@ resource "azurerm_application_gateway" "this" {
     name                       = local.request_routing_rule_name
     priority                   = 9
     rule_type                  = "Basic"
-    http_listener_name         = local.listener_name
+    http_listener_name         = local.https_listener_name
     backend_address_pool_name  = local.backend_address_pool_name
     backend_http_settings_name = local.http_setting_name
   }
 
+  ssl_certificate {
+    name                = local.agw_ssl_name
+    key_vault_secret_id = azurerm_key_vault_secret.this_https.id
+    # password            = var.certificate_password
+  }
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.agw_cert_read.id]
+  }
+
+  depends_on = [azurerm_key_vault_access_policy.agw_identity]
+}
+
+resource "azurerm_user_assigned_identity" "agw_cert_read" {
+  name                = local.agw_identity_name
+  resource_group_name = azurerm_resource_group.this.name
+  location            = azurerm_resource_group.this.location
+  tags                = local.tags
+}
+
+resource "azurerm_key_vault_access_policy" "agw_identity" {
+  key_vault_id       = azurerm_key_vault.certificates.id
+  object_id          = azurerm_user_assigned_identity.agw_cert_read.client_id
+  tenant_id          = data.azurerm_client_config.current.tenant_id
+  secret_permissions = ["Get"]
+  # certificate_permissions = [ "ManageContacts" ]
+}
+
+# resource "azurerm_key_vault_certificate" "this_https" {
+#   key_vault_id = azurerm_key_vault.certificates.id
+#   name         = local.agw_ssl_name
+#   certificate {
+#     contents = filebase64(var.certificate_path)
+#     password = var.certificate_password
+#   }
+
+#   # certificate_policy {
+#   #   key_properties {
+#   #     exportable = false
+#   #     key_type   = "RSA"
+#   #     key_size   = 2048
+#   #     reuse_key  = false
+#   #   }
+#   #   issuer_parameters {
+#   #     name = "Unknown"
+#   #   }
+#   #   secret_properties {
+#   #     content_type = "application/pkcs12"
+#   #   }
+#   #   lifetime_action {
+#   #     trigger {
+#   #       days_before_expiry = 30
+#   #     }
+#   #     action {
+#   #       action_type = "EmailContacts"
+#   #     }
+#   #   }
+#   # }
+# }
+
+resource "azurerm_key_vault_secret" "this_https" {
+  name         = local.agw_ssl_name
+  key_vault_id = azurerm_key_vault.certificates.id
+  value        = filebase64(var.certificate_path)
+
+  depends_on = [
+    azurerm_key_vault_access_policy.self,
+    azurerm_private_endpoint.akv
+  ]
 }
