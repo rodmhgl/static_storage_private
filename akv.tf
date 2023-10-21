@@ -19,6 +19,27 @@ resource "azurerm_key_vault" "certificates" {
 
 }
 
+resource "azurerm_private_endpoint" "akv" {
+  name                = local.akv_pe_name
+  location            = azurerm_resource_group.this.location
+  resource_group_name = azurerm_resource_group.this.name
+  subnet_id           = azurerm_subnet.pe.id
+  tags                = local.tags
+
+  private_service_connection {
+    name                           = local.akv_psc_name
+    private_connection_resource_id = azurerm_key_vault.certificates.id
+    subresource_names              = ["Vault"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "privatelink-vault-dns-zone-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.privatelink_vaultcore.id]
+  }
+
+}
+
 resource "azurerm_key_vault_access_policy" "self" {
   key_vault_id = azurerm_key_vault.certificates.id
   tenant_id    = data.azurerm_client_config.current.tenant_id

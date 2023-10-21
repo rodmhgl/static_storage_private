@@ -7,7 +7,6 @@ locals {
   http_listener_name             = "${azurerm_virtual_network.this.name}-httplstn"
   https_listener_name            = "${azurerm_virtual_network.this.name}-httpslstn"
   request_routing_rule_name      = "${azurerm_virtual_network.this.name}-rqrt"
-  # redirect_configuration_name    = "${azurerm_virtual_network.this.name}-rdrcfg"
 }
 
 resource "azurerm_application_gateway" "this" {
@@ -130,38 +129,8 @@ resource "azurerm_key_vault_access_policy" "agw_identity" {
   # certificate_permissions = [ "ManageContacts" ]
 }
 
-# resource "azurerm_key_vault_certificate" "this_https" {
-#   key_vault_id = azurerm_key_vault.certificates.id
-#   name         = local.agw_ssl_name
-#   certificate {
-#     contents = filebase64(var.certificate_path)
-#     password = var.certificate_password
-#   }
-
-#   # certificate_policy {
-#   #   key_properties {
-#   #     exportable = false
-#   #     key_type   = "RSA"
-#   #     key_size   = 2048
-#   #     reuse_key  = false
-#   #   }
-#   #   issuer_parameters {
-#   #     name = "Unknown"
-#   #   }
-#   #   secret_properties {
-#   #     content_type = "application/pkcs12"
-#   #   }
-#   #   lifetime_action {
-#   #     trigger {
-#   #       days_before_expiry = 30
-#   #     }
-#   #     action {
-#   #       action_type = "EmailContacts"
-#   #     }
-#   #   }
-#   # }
-# }
-
+# convert pem to unencrypted pfx without keys
+# openssl pkcs12 -export -nokeys -in ./cert.pem -out ~/upkcs12.pfx
 resource "azurerm_key_vault_secret" "this_https" {
   name         = local.agw_ssl_name
   key_vault_id = azurerm_key_vault.certificates.id
