@@ -1,5 +1,5 @@
 resource "azurerm_public_ip" "this" {
-  name                = local.agw_pip_name
+  name                = "${module.naming.public_ip.name}-pip"
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
   allocation_method   = "Static"
@@ -8,7 +8,7 @@ resource "azurerm_public_ip" "this" {
 }
 
 resource "azurerm_virtual_network" "this" {
-  name                = local.vnet_name
+  name                = module.naming.virtual_network.name
   address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
@@ -16,7 +16,7 @@ resource "azurerm_virtual_network" "this" {
 }
 
 resource "azurerm_subnet" "stg" {
-  name                 = local.stg_subnet_name
+  name                 = "${module.naming.subnet.name}-stg"
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
   service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
@@ -24,7 +24,7 @@ resource "azurerm_subnet" "stg" {
 }
 
 resource "azurerm_subnet" "agw" {
-  name                 = local.agw_subnet_name
+  name                 = "${module.naming.subnet.name}-agw"
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
   service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
@@ -32,7 +32,7 @@ resource "azurerm_subnet" "agw" {
 }
 
 resource "azurerm_subnet" "pe" {
-  name                 = local.pe_subnet_name
+  name                 = "${module.naming.subnet.name}-pe"
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
   service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]

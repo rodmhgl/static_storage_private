@@ -43,6 +43,6 @@ Note that while the storage account does explicitly prohibit anonymous blob acce
 
 This has no effect on a storage containers `blob` endpoints. Those endpoints will continue to prohibit anonymous access to blob data. 
 
-You can modify the anonymous access level of the $web container, but making this modification has no impact on the primary static **website** endpoint because these files are served through anonymous access requests. That means public (read-only) access to all files.
+You can modify the anonymous access level of the `$web` container, but making this modification has no impact on the primary static `web` endpoint because these files are served through anonymous access requests. That means public (read-only) access to all files.
 
 Disabling anonymous access on a storage account by using the anonymous access setting of the storage account doesn't affect static websites that are hosted in that storage account.

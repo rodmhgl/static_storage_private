@@ -49,7 +49,7 @@ resource "azurerm_application_gateway" "this" {
 
   backend_http_settings {
     name                                = local.http_setting_name
-    host_name                           = "${azurerm_storage_account.this.name}.web.core.windows.net"
+    host_name                           = "${azurerm_storage_account.this.name}.z13.web.core.windows.net"
     cookie_based_affinity               = "Disabled"
     path                                = "/"
     port                                = 443
@@ -118,7 +118,7 @@ resource "azurerm_application_gateway" "this" {
 }
 
 resource "azurerm_user_assigned_identity" "agw_cert_read" {
-  name                = local.agw_identity_name
+  name                = "${module.naming.user_assigned_identity.name}-agw"
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
   tags                = local.tags
@@ -131,21 +131,8 @@ resource "azurerm_key_vault_access_policy" "agw_identity" {
   secret_permissions = ["Get"]
 }
 
-# convert pem to unencrypted pfx without keys
-# openssl pkcs12 -export -nokeys -in ./cert.pem -out ~/upkcs12.pfx
-resource "azurerm_key_vault_secret" "this_https" {
-  name         = local.agw_ssl_name
-  key_vault_id = azurerm_key_vault.certificates.id
-  value        = filebase64(var.certificate_path)
-
-  depends_on = [
-    azurerm_key_vault_access_policy.self,
-    azurerm_private_endpoint.akv
-  ]
-}
-
 resource "azurerm_key_vault_certificate" "this_https" {
-  name         = "${local.agw_ssl_name}-cert"
+  name         = module.naming.key_vault_certificate.name_unique
   key_vault_id = azurerm_key_vault.certificates.id
   certificate {
     contents = filebase64(var.certificate_path)
@@ -163,3 +150,23 @@ resource "azurerm_key_vault_certificate" "this_https" {
 # Storage
 # Certificate Placement
 # Public IP / User Assigned Identity / AKV Access Policy (UAI) / App Gateway
+
+# sudo certbot certonly --manual \
+#   --preferred-challenges dns \
+#   -d "storage-agw.azurelaboratory.com" \
+#   --register-unsafely-without-email \
+#   --agree-tos \
+#   --test-cert \
+#   --manual-auth-hook "./validate.sh" \
+#   --manual-cleanup-hook "./cleanup.sh" \
+#   --deploy-hook "./deploy.sh" \
+#   --disable-hook-validation \
+#   --logs-dir "/opt/certbot/log" \
+#   --work-dir "/opt/certbot/lib" \
+#   --config-dir "/opt/certbot/letsencrypt"
+
+# sudo openssl pkcs12 -export \
+# -out ~/pkcs12_cert.pfx \
+# -inkey ./privkey.pem \
+# -in ./cert.pem \
+# -certfile ./chain.pem

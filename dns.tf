@@ -1,6 +1,6 @@
 resource "azurerm_resource_group" "dns" {
-  name     = local.dns_rg_name
-  location = local.location
+  name     = "${module.naming.resource_group.name}-dns"
+  location = var.location
   tags     = local.tags
 }
 

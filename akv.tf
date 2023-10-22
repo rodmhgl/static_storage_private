@@ -22,14 +22,14 @@ resource "azurerm_key_vault" "certificates" {
 }
 
 resource "azurerm_private_endpoint" "akv" {
-  name                = local.akv_pe_name
+  name                = "${module.naming.private_endpoint.name}-akv"
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
   subnet_id           = azurerm_subnet.pe.id
   tags                = local.tags
 
   private_service_connection {
-    name                           = local.akv_psc_name
+    name                           = "${local.akv_name}-psc"
     private_connection_resource_id = azurerm_key_vault.certificates.id
     subresource_names              = ["Vault"]
     is_manual_connection           = false

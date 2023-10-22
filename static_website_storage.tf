@@ -34,14 +34,14 @@ resource "azurerm_storage_account" "this" {
 }
 
 resource "azurerm_private_endpoint" "stg_web" {
-  name                = local.stg_pe_name
+  name                = "${module.naming.private_endpoint.name}-storage-web"
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
   subnet_id           = azurerm_subnet.pe.id
   tags                = local.tags
 
   private_service_connection {
-    name                           = local.stg_psc_name
+    name                           = "${local.stg_account_name}-stg-web-psc"
     private_connection_resource_id = azurerm_storage_account.this.id
     subresource_names              = ["web"]
     is_manual_connection           = false
@@ -55,6 +55,27 @@ resource "azurerm_private_endpoint" "stg_web" {
   private_dns_zone_group {
     name                 = "privatelink-web-dns-zone-group"
     private_dns_zone_ids = [azurerm_private_dns_zone.privatelink_web.id]
+  }
+
+}
+
+resource "azurerm_private_endpoint" "stg_blob" {
+  name                = "${module.naming.private_endpoint.name}-storage-blob"
+  location            = azurerm_resource_group.this.location
+  resource_group_name = azurerm_resource_group.this.name
+  subnet_id           = azurerm_subnet.pe.id
+  tags                = local.tags
+
+  private_service_connection {
+    name                           = "${local.stg_account_name}-stg-blob-psc"
+    private_connection_resource_id = azurerm_storage_account.this.id
+    subresource_names              = ["blob"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "privatelink-blob-dns-zone-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.privatelink_blob.id]
   }
 
 }

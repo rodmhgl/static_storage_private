@@ -8,3 +8,9 @@ variable "certificate_path" {
   type        = string
   description = "Relative path to the required certificate."
 }
+
+variable "location" {
+  type        = string
+  description = "The Azure Region to create the resource in."
+  default     = "eastus"
+}
