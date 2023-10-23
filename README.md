@@ -5,9 +5,9 @@
 - Application Gateway (AppGW) answers the request
   - AppGW retrieves its SSL certificate from Azure Key Vault (AKV)
   - AppGW uses a **user-assigned identity** to authenticate to AKV
-  - AppGW communicates to AKV over an HTTP-secured Private Endpoint connection
+  - AppGW communicates to AKV over an HTTPS-secured Private Endpoint connection
 - AppGW securely forwards the request to the Storage Account (SA)
-  - AppGW communicates to SA over an HTTP-secured Private Endpoint connection
+  - AppGW communicates to SA over an HTTPS-secured Private Endpoint connection
 - SA responds to AppGW and serves the requested item to the AppGW
   - SA has Static Website enabled
   - SA serves content from special `$web` container
