@@ -1,3 +1,30 @@
+resource "azurerm_user_assigned_identity" "agw_cert_read" {
+  name                = "${module.naming.user_assigned_identity.name}-agw"
+  resource_group_name = azurerm_resource_group.this.name
+  location            = azurerm_resource_group.this.location
+  tags                = local.tags
+}
+
+resource "azurerm_key_vault_access_policy" "agw_identity" {
+  key_vault_id       = azurerm_key_vault.certificates.id
+  object_id          = azurerm_user_assigned_identity.agw_cert_read.principal_id
+  tenant_id          = data.azurerm_client_config.current.tenant_id
+  secret_permissions = ["Get"]
+}
+
+resource "azurerm_key_vault_certificate" "this_https" {
+  name         = module.naming.key_vault_certificate.name_unique
+  key_vault_id = azurerm_key_vault.certificates.id
+  certificate {
+    contents = filebase64(var.certificate_path)
+    password = var.certificate_password
+  }
+  depends_on = [
+    azurerm_key_vault_access_policy.self,
+    azurerm_private_endpoint.akv
+  ]
+}
+
 resource "azurerm_key_vault" "certificates" {
   name                          = local.akv_name
   resource_group_name           = azurerm_resource_group.this.name

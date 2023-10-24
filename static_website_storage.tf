@@ -1,7 +1,3 @@
-resource "random_id" "storage_account" {
-  byte_length = 1
-}
-
 resource "azurerm_storage_account" "this" {
   name                            = local.stg_account_name
   resource_group_name             = azurerm_resource_group.this.name
@@ -14,6 +10,24 @@ resource "azurerm_storage_account" "this" {
   public_network_access_enabled   = false
   allow_nested_items_to_be_public = false
   tags                            = local.tags
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  blob_properties {
+    versioning_enabled       = true
+    change_feed_enabled      = true
+    last_access_time_enabled = true
+
+    delete_retention_policy {
+      days = 7
+    }
+
+    container_delete_retention_policy {
+      days = 7
+    }
+  }
 
   network_rules {
     default_action             = "Deny"
@@ -31,7 +45,22 @@ resource "azurerm_storage_account" "this" {
     error_404_document = "not_real_yet.htm"
   }
 
+  lifecycle {
+    ignore_changes = [
+      customer_managed_key
+    ]
+  }
+
 }
+
+# resource "azurerm_storage_object_replication" "west" {
+#   source_storage_account_id      = azurerm_storage_account.this.id
+#   destination_storage_account_id = azurerm_storage_account.replica.id
+#   rules {
+#     source_container_name      = azurerm_storage_container.this.name
+#     destination_container_name = azurerm_storage_container.replica.name
+#   }
+# }
 
 resource "azurerm_private_endpoint" "stg_web" {
   name                = "${module.naming.private_endpoint.name}-storage-web"

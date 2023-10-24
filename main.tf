@@ -2,6 +2,7 @@ locals {
   suffix           = "pvtstg"
   stg_account_name = module.naming.storage_account.name_unique
   akv_name         = module.naming.key_vault.name
+  stg_akv_name     = "${module.naming.key_vault.name}-stg"
   agw_name         = module.naming.application_gateway.name
   agw_ssl_name     = "${local.agw_name}-ssl"
   tags = {
