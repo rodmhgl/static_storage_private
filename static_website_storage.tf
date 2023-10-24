@@ -108,3 +108,9 @@ resource "azurerm_private_endpoint" "stg_blob" {
   }
 
 }
+
+resource "azurerm_management_lock" "storage" {
+  lock_level = "CanNotDelete"
+  name       = "storage-lock"
+  scope      = azurerm_storage_account.this.id
+}
