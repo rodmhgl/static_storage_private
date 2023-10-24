@@ -31,7 +31,7 @@ resource "azurerm_storage_account" "this" {
 
   network_rules {
     default_action             = "Deny"
-    virtual_network_subnet_ids = [azurerm_subnet.agw.id, azurerm_subnet.stg.id]
+    virtual_network_subnet_ids = [azurerm_subnet.agw.id]
 
     # Added private_link_access to match the config in the lab - dataScanner added by security policy? 
     private_link_access {
