@@ -15,14 +15,6 @@ resource "azurerm_virtual_network" "this" {
   tags                = local.tags
 }
 
-resource "azurerm_subnet" "stg" {
-  name                 = "${module.naming.subnet.name}-stg"
-  resource_group_name  = azurerm_resource_group.this.name
-  virtual_network_name = azurerm_virtual_network.this.name
-  service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
-  address_prefixes     = ["10.0.0.0/24"]
-}
-
 resource "azurerm_subnet" "agw" {
   name                 = "${module.naming.subnet.name}-agw"
   resource_group_name  = azurerm_resource_group.this.name
