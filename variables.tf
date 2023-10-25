@@ -14,3 +14,9 @@ variable "location" {
   description = "The Azure Region to create the resource in."
   default     = "eastus"
 }
+
+variable "lock_sa" {
+  type        = bool
+  description = "Should the Storage Account be locked? Defaults to true."
+  default     = true
+}

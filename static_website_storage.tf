@@ -42,7 +42,7 @@ resource "azurerm_storage_account" "this" {
 
   static_website {
     index_document     = "index.htm"
-    error_404_document = "not_real_yet.htm"
+    error_404_document = "404.htm"
   }
 
   lifecycle {
@@ -54,6 +54,7 @@ resource "azurerm_storage_account" "this" {
 }
 
 resource "azurerm_management_lock" "storage" {
+  count      = var.lock_sa ? 1 : 0
   lock_level = "CanNotDelete"
   name       = "storage-lock"
   scope      = azurerm_storage_account.this.id
