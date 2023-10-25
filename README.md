@@ -10,6 +10,8 @@
   - AppGW communicates to SA over an HTTPS-secured Private Endpoint connection
 - SA responds to AppGW and serves the requested item to the AppGW
   - SA has Static Website enabled
+  - SA is encrypted with a Customer-Managed Key (CMK)
+  - SA is configured to send diagnostics to POC LAW
   - SA serves content from special `$web` container
   - Storage account security considerations
     - Secure transfer is set to `required`
@@ -18,6 +20,13 @@
     - Performance is set to `premium`
     - Kind is set to `BlockBlobStorage`
     - Public network access is set to `disabled`
+  - Storage account data protection considerations
+    - Soft delete is enabled for blobs
+    - Soft delete is enabled for containers
+    - Versioning is enabled for blobs
+    - Change feed is enabled for blobs
+  - Storage account High-Availability considerations
+    - While not a part of this POC scope - it is recommended to test Object Replication to asynchronously synch content to another region for High-Availability purposes
 
 ![architecture](assets/agw_sa_static_web.drawio.png)
 
